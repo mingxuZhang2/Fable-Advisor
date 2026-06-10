@@ -23,7 +23,7 @@ test("assistant tool_use becomes action, text becomes text", () => {
 test("result event marks done", () => {
   const [item] = describeEvent({ type: "result", result: "final", session_id: "s" });
   assert.equal(item.done, true);
-  assert.equal(item.result.session_id, "s");
+  assert.equal(item.event.session_id, "s");
 });
 
 test("uninteresting events yield empty list", () => {

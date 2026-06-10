@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { systemPromptFor, MODE_NAMES } from "../lib/modes.js";
 
 test("five modes exist", () => {
-  assert.deepEqual(MODE_NAMES.sort(),
+  assert.deepEqual([...MODE_NAMES].sort(),
     ["advise", "audit", "discuss", "project_review", "review"]);
 });
 
