@@ -6,6 +6,9 @@
   "bin": {
     "fable-advisor": "./server.js"
   },
+  "scripts": {
+    "test": "node --test tests/"
+  },
   "engines": {
     "node": ">=18"
   },
