@@ -7,7 +7,7 @@
     "fable-advisor": "./server.js"
   },
   "scripts": {
-    "test": "node --test tests/"
+    "test": "node --test \"tests/*.test.js\""
   },
   "engines": {
     "node": ">=18"
