@@ -18,6 +18,7 @@ if (!spec?.runId) {
 
 const MODEL = process.env.FABLE_MODEL || "claude-fable-5[1m]";
 const CLAUDE_BIN = process.env.FABLE_CLAUDE_BIN || "claude";
+const EFFORT = process.env.FABLE_EFFORT || "xhigh"; // 推理努力程度,固定值不暴露给调用方
 const STALL_MIN = Number(process.env.FABLE_STALL_MINUTES) || 10; // 0/NaN/空串 → 默认 10
 const STALL_MS = STALL_MIN * 60_000;
 // 心跳:上游静默(如 429 内部重试)期间也定期刷新 state.updated,
@@ -133,6 +134,7 @@ function runAttempt(resumeId) {
       "--append-system-prompt", systemPromptFor(spec.mode),
       "--output-format", "stream-json", "--verbose",
       "--include-partial-messages", // 流式增量也喂 watchdog:长单消息生成期间保持活性信号
+      "--effort", EFFORT,
     ];
     if (resumeId) args.push("--resume", resumeId);
 
