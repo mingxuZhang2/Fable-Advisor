@@ -4,11 +4,11 @@
 
 **把一个独立端点上的强力模型(Fable)变成 Claude Code 里随叫随到的代码顾问**
 
-代码审查 · 宏观审稿 · 安全审计 · 技术辩论 · 方案咨询
+代码审查 · 宏观审稿 · 安全审计 · 技术辩论 · 方案咨询 · 实验结果分析
 
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![MCP](https://img.shields.io/badge/protocol-MCP-7c3aed)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-27%20passing-2ea44f)](#-开发与测试)
+[![Tests](https://img.shields.io/badge/tests-28%20passing-2ea44f)](#-开发与测试)
 [![Claude Code](https://img.shields.io/badge/for-Claude%20Code-d97757?logo=anthropic&logoColor=white)](https://code.claude.com)
 
 主会话该用什么模型用什么模型;需要第二意见时,一句话召唤 Fable。<br>
@@ -31,7 +31,7 @@
   - [升级与卸载](#4-升级与卸载)
   - [特殊网络环境(代理/wrapper)](#5-特殊网络环境代理wrapper)
 - [五个工具](#-五个工具)
-- [五种模式](#-五种模式)
+- [六种模式](#-六种模式)
 - [命名对话:持久续聊](#-命名对话持久续聊)
 - [实时进度与后台运行](#-实时进度与后台运行)
 - [环境变量](#-环境变量)
@@ -90,7 +90,7 @@ flowchart TB
 git clone https://github.com/mingxuZhang2/Fable-Advisor.git ~/fable-advisor
 cd ~/fable-advisor
 npm install
-npm test          # 应看到 27 个测试全绿,不需要任何凭据
+npm test          # 应看到 28 个测试全绿,不需要任何凭据
 ```
 
 **方式 B:整目录拷贝(服务器装不了 npm 时)**
@@ -183,7 +183,7 @@ rm -rf ~/fable-advisor ~/.fable-advisor
 |---|---|---|
 | `prompt` | string,必填 | 咨询/审查/讨论内容(自包含,Fable 自己读代码) |
 | `directory` | string,必填 | 项目绝对路径(子进程 cwd,Fable 的可读范围) |
-| `mode` | 枚举,默认 `advise` | 见[五种模式](#-五种模式) |
+| `mode` | 枚举,默认 `advise` | 见[六种模式](#-六种模式) |
 | `conversation` | string,默认 `"default"` | 命名对话,同名续聊(底层 `--resume`) |
 | `fresh` | bool,默认 `false` | 丢弃该名字的历史,重新开始 |
 | `files` | string[],可选 | 重点文件/子目录(相对 directory) |
@@ -191,17 +191,21 @@ rm -rf ~/fable-advisor ~/.fable-advisor
 
 </details>
 
-## 🎭 五种模式
+## 🎭 六种模式
 
 | mode | 角色 | 适合 |
 |---|---|---|
-| `review` | 代码审查:实现正确性——bug、边界条件、逻辑错误;按严重度分级,带 file:line | 改完一个 feature/修完一个 bug 之后 |
-| `project_review` | 宏观审稿:架构、模块划分、方法论、技术债、方向性风险;不纠缠单行代码 | 项目里程碑、开题/结题、重构前 |
-| `audit` | 对抗审计:安全/数据正确性/质量清单式排查,苛刻、宁可误报 | 上线前、处理敏感数据的代码 |
-| `discuss` | 辩论伙伴:立场鲜明、敢直接反驳、不附和,观点给依据 | 技术选型拿不定主意、想找人抬杠 |
-| `advise` | 顾问:列出选项 + 权衡,给一个明确推荐 | "我该怎么做"类问题 |
+| `review` | 代码审查:实现正确性——bug、边界条件、逻辑错误;严重度严格定义(科研代码按"会不会改变论文结论"分级),不凑数、不报风格问题 | 改完一个 feature/修完一个 bug 之后 |
+| `project_review` | 宏观审稿:架构、模块划分、方法论、技术债;每个 weakness 标注 fatal/serious/cosmetic | 项目里程碑、开题/结题、重构前 |
+| `audit` | 对抗审计:安全/数据正确性/质量清单式排查,宽撒网但每条带 [Confirmed\|Likely\|Speculative] 分诊标签 | 上线前、处理敏感数据的代码 |
+| `discuss` | 辩论伙伴:开头必须亮立场,不准以同意/夸赞起手,认输要明说 | 技术选型拿不定主意、想找人抬杠 |
+| `advise` | 顾问:选项按风险和可逆性排序,给唯一推荐;不给工时估计 | "我该怎么做"类问题 |
+| `research` | **科研协作者(PI 视角)**:解读实验结果(机制解释,非复述)、排查实验 setting 的效度威胁、按信息增益排序下一步;**可自派 subagents 并行阅读大 repo/多组结果** | 实验结果出来后:"这说明什么?下一步怎么走?够不够投稿?" |
 
-公共约束:回复语言跟随提问;引用代码必须 `file:line`。
+公共纪律(所有模式):回复语言跟随提问;引用必须 `file:line`;论断必须基于真读过的代码,没验证的标 "unverified";说不出触发场景就不报(空 findings 合法,高危低置信例外);不夸大严重度;最终消息自包含、以结论收尾。
+
+> [!TIP]
+> `research` 模式会派 subagents 并行读 repo,单次成本比其他模式高几倍($1-3 量级),建议配合 `background=true` 使用。
 
 ## 🧵 命名对话:持久续聊
 

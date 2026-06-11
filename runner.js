@@ -27,7 +27,7 @@ const RETRY_DELAYS = (process.env.FABLE_RETRY_DELAYS_MS || "5000,15000,30000")
   .split(",").map(Number).filter((n) => Number.isFinite(n) && n > 0);
 const RETRYABLE = /429|rate.?limit|overloaded|service unavailable|529|ECONNRESET|ETIMEDOUT/i;
 const SESSION_GONE = /no conversation found|session.*not found/i;
-const TOOL_ACTION = /^(Read|Grep|Glob|WebFetch|WebSearch)\b/;
+const TOOL_ACTION = /^(Read|Grep|Glob|WebFetch|WebSearch|Agent|Task)\b/;
 
 const dir = runDir(spec.runId);
 const statePath = path.join(dir, "state.json");
@@ -113,9 +113,11 @@ process.on("SIGTERM", () => { // 取消路径(server kill(-runnerPid) 触发):�
 // 单次尝试:resolve {ok,event} | {stalled:true} | {reason}
 function runAttempt(resumeId) {
   return new Promise((resolve) => {
+    // research 模式放行 Agent/Task:Fable 可以派 subagent 并行阅读大 repo/多组结果
+    const extraTools = spec.mode === "research" ? ["Agent", "Task"] : [];
     const args = [
       "-p", promptText, "--model", MODEL, "--setting-sources", "",
-      "--allowedTools", "Read", "Grep", "Glob", "WebFetch", "WebSearch",
+      "--allowedTools", "Read", "Grep", "Glob", "WebFetch", "WebSearch", ...extraTools,
       "--disallowedTools", "Bash", "Edit", "Write", "NotebookEdit",
       "--append-system-prompt", systemPromptFor(spec.mode),
       "--output-format", "stream-json", "--verbose",

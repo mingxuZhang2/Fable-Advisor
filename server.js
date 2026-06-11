@@ -144,7 +144,10 @@ server.registerTool("consult_fable", {
       "review=implementation correctness (bugs, file:line findings); " +
       "project_review=macro architecture/methodology critique; " +
       "audit=adversarial security/quality sweep; discuss=debate partner with positions; " +
-      "advise=options + one clear recommendation"),
+      "advise=options + one clear recommendation; " +
+      "research=interpret experimental results vs the author's goal, critique the experimental " +
+      "setup, rank next steps by information gain (can spawn subagents to read large repos in " +
+      "parallel — slower and pricier, for substantive research questions)"),
     conversation: z.string().default("default").describe(
       "Named thread. Same name = Fable continues with memory of prior turns."),
     fresh: z.boolean().default(false).describe("Discard this conversation's history and start anew."),
