@@ -8,7 +8,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { runDir, readJson, writeJson, getConversation, setConversation } from "./lib/store.js";
 import { systemPromptFor } from "./lib/modes.js";
-import { describeEvent } from "./lib/events.js";
+import { describeEvent, outputTokens } from "./lib/events.js";
 
 const spec = readJson(process.argv[2]);
 if (!spec?.runId) {
@@ -35,12 +35,24 @@ const livePath = path.join(dir, "live.md");
 const started = Date.now();
 
 let state = {
-  status: "running", pid: process.pid, pgid: process.pid, turn: 0, action: "starting",
+  status: "running", pid: process.pid, pgid: process.pid, turn: 0, tokens: 0, action: "starting",
   // pgid === pid:runner 以 detached 方式被 server 启动,自己就是进程组组长(server 用 kill(-pid) 取消)
   started: new Date(started).toISOString(), updated: new Date(started).toISOString(),
   runId: spec.runId, conversation: spec.conversation, directory: spec.directory, mode: spec.mode,
 };
 writeJson(statePath, state);
+
+// 输出 token 记账:已完成消息累计 + 当前消息的流式增量(跨重试累计)
+let tokensDone = 0;
+let tokensPartial = 0;
+const totalTokens = () => tokensDone + tokensPartial;
+function trackTokens(evt) {
+  const t = outputTokens(evt);
+  if (!t) return;
+  if (t.completed != null) { tokensDone += t.completed; tokensPartial = 0; }
+  else if (t.partial != null) tokensPartial = t.partial;
+  else if (t.final != null) { tokensDone = Math.max(tokensDone, t.final); tokensPartial = 0; }
+}
 
 function setState(patch) {
   state = { ...state, ...patch, updated: new Date().toISOString() };
@@ -136,7 +148,7 @@ function runAttempt(resumeId) {
     let stalled = false;
     let watchdog = null;
     let settled = false;
-    const heartbeat = setInterval(() => setState({}), HEARTBEAT_MS); // 空 patch 只刷新 updated
+    const heartbeat = setInterval(() => setState({ tokens: totalTokens() }), HEARTBEAT_MS); // 静默期也带上最新 token 数
     const settle = (r) => { // 幂等:watchdog 先 resolve 后,close/exit 再触发也无害
       if (settled) return;
       settled = true;
@@ -161,14 +173,15 @@ function runAttempt(resumeId) {
       resetWatchdog(); // 先喂狗再解析:任何原始输出行都算活性信号
       let evt;
       try { evt = JSON.parse(line); } catch { return; }
+      trackTokens(evt);
       for (const item of describeEvent(evt)) {
         if (item.action) {
           setState(TOOL_ACTION.test(item.action)
-            ? { turn: state.turn + 1, action: item.action }
-            : { action: item.action });
+            ? { turn: state.turn + 1, action: item.action, tokens: totalTokens() }
+            : { action: item.action, tokens: totalTokens() });
           live(`> [${hms()}] ${item.action}\n`);
         } else if (item.text) {
-          setState({ action: "writing analysis" });
+          setState({ action: "writing analysis", tokens: totalTokens() });
           live(`${item.text}\n`);
         } else if (item.done) {
           terminal = item.event;

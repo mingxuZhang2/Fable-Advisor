@@ -40,10 +40,12 @@ if (mode === "hang") { setTimeout(() => process.exit(1), 60_000); } else if (mod
 } else {
   await sleep(30);
   out({ type: "assistant", message: { content: [
-    { type: "tool_use", name: "Read", input: { file_path: "src/a.py" } }] } });
+    { type: "tool_use", name: "Read", input: { file_path: "src/a.py" } }],
+    usage: { output_tokens: 21 } } });
   await sleep(30);
   out({ type: "assistant", message: { content: [
-    { type: "text", text: resumed ? "continuing our chat" : "fresh analysis" }] } });
+    { type: "text", text: resumed ? "continuing our chat" : "fresh analysis" }],
+    usage: { output_tokens: 21 } } });
   await sleep(30);
   out({ type: "result", subtype: "success", is_error: false,
     result: resumed ? "RESUMED-ANSWER" : "FRESH-ANSWER",

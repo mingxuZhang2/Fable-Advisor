@@ -68,6 +68,8 @@ const elapsedSec = (st) => {
   return Math.round((end - Date.parse(st.started)) / 1000);
 };
 
+const fmtTokens = (n = 0) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k tok` : `${n} tok`);
+
 function statusText(runId) {
   const st = readState(runId);
   if (!st) return `No run found${runId ? ` for ${runId}` : ""}.`;
@@ -76,7 +78,7 @@ function statusText(runId) {
   return `run_id: ${runId}
 status: ${st.status}
 mode: ${st.mode} · conversation: ${st.conversation}
-steps so far: ${st.turn} · elapsed: ${elapsedSec(st)}s
+steps so far: ${st.turn} · ${fmtTokens(st.tokens)} · elapsed: ${elapsedSec(st)}s
 current: ${st.action}
 live transcript: tail -f ${livePath(runId)}
 
@@ -188,7 +190,7 @@ Use fable_status / fable_result, or fable_cancel to stop it.`);
       await extra.sendNotification({
         method: "notifications/progress",
         params: { progressToken, progress: ++progress,
-          message: `step ${st.turn} · ${st.action} · ${elapsedSec(st)}s` },
+          message: `step ${st.turn} · ${st.action} · ${fmtTokens(st.tokens)} · ${elapsedSec(st)}s` },
       }).catch(() => {});
     }
     if (st.status === "running") continue;
@@ -201,7 +203,7 @@ Use fable_status / fable_result, or fable_cancel to stop it.`);
 
 ---
 conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
-      `turns total: ${turns} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
+      `turns total: ${turns} · ${fmtTokens(r.usage?.output_tokens)} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
       `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${runId}`);
   }
 });
@@ -231,7 +233,7 @@ server.registerTool("fable_result", {
 
 ---
 conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
-    `turns total: ${turns} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
+    `turns total: ${turns} · ${fmtTokens(r.usage?.output_tokens)} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
     `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${id}`);
 });
 

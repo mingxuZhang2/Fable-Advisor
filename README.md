@@ -8,7 +8,7 @@
 
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![MCP](https://img.shields.io/badge/protocol-MCP-7c3aed)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-28%20passing-2ea44f)](#-开发与测试)
+[![Tests](https://img.shields.io/badge/tests-29%20passing-2ea44f)](#-开发与测试)
 [![Claude Code](https://img.shields.io/badge/for-Claude%20Code-d97757?logo=anthropic&logoColor=white)](https://code.claude.com)
 
 主会话该用什么模型用什么模型;需要第二意见时,一句话召唤 Fable。<br>
@@ -47,7 +47,7 @@
 |---|---|
 | 🔍 **自主探索** | Fable 用只读工具(Read/Grep/Glob)+ 联网(WebFetch/WebSearch)自己看代码,prompt 只需说"看什么、为什么" |
 | 🧵 **命名对话** | 同名 `conversation` 续聊,Fable 记得之前的所有内容;跨会话持久,续聊还省钱(缓存命中) |
-| 📡 **实时进度** | 阻塞等待时状态行滚动显示 `step 3 · Read src/train.py · 52s`,不再黑盒干等 |
+| 📡 **实时进度** | 阻塞等待时状态行滚动显示 `step 3 · Read src/train.py · 1.8k tok · 52s`,不再黑盒干等 |
 | 🌙 **后台运行** | `background=true` 立即返回,`tail -f` 看全文直播;MCP server 重启、主会话关掉,任务照跑 |
 | ⏳ **无硬超时** | 只看活性:任务再大,只要还在动就不杀;真挂死了才判失败 |
 | 🔁 **自动重试** | 429/限流自动退避重试;上游 session 失效自动降级新开 |
@@ -90,7 +90,7 @@ flowchart TB
 git clone https://github.com/mingxuZhang2/Fable-Advisor.git ~/fable-advisor
 cd ~/fable-advisor
 npm install
-npm test          # 应看到 28 个测试全绿,不需要任何凭据
+npm test          # 应看到 29 个测试全绿,不需要任何凭据
 ```
 
 **方式 B:整目录拷贝(服务器装不了 npm 时)**
@@ -228,7 +228,7 @@ rm -rf ~/fable-advisor ~/.fable-advisor
 **阻塞模式**(默认):等待期间状态行实时滚动(MCP progress notification):
 
 ```text
-⠸ consult_fable … step 3 · Read src/train.py · 52s
+⠸ consult_fable … step 3 · Read src/train.py · 1.8k tok · 52s
 ```
 
 按 <kbd>Esc</kbd> 中断等待后 **run 继续在后台跑**,随后用 `fable_status` / `fable_result` 取。

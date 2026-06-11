@@ -58,6 +58,7 @@ test("happy path: done state, result.json, live transcript, conversations regist
   assert.equal(state.status, "done");
   assert.equal(state.action, "complete");
   assert.ok(state.turn >= 1); // 至少计入了 Read 工具一轮
+  assert.equal(state.tokens, 42); // 两条 assistant 消息各 21 tok,result 终态确认 42
   assert.equal(state.runId, runId);
 
   const res = result();

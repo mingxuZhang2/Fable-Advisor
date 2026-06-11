@@ -29,3 +29,15 @@ test("result event marks done", () => {
 test("uninteresting events yield empty list", () => {
   assert.deepEqual(describeEvent({ type: "user", message: {} }), []);
 });
+
+test("outputTokens: assistant/stream_event/result extraction", async () => {
+  const { outputTokens } = await import("../lib/events.js");
+  assert.deepEqual(outputTokens({ type: "assistant", message: { usage: { output_tokens: 21 } } }),
+    { completed: 21 });
+  assert.deepEqual(outputTokens({ type: "stream_event", event: { type: "message_delta", usage: { output_tokens: 7 } } }),
+    { partial: 7 });
+  assert.deepEqual(outputTokens({ type: "result", usage: { output_tokens: 42 } }),
+    { final: 42 });
+  assert.equal(outputTokens({ type: "assistant", message: {} }), null);
+  assert.equal(outputTokens({ type: "user" }), null);
+});
