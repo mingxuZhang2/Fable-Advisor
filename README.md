@@ -4,7 +4,7 @@
 
 **把一个独立端点上的强力模型(Fable)变成 Claude Code 里随叫随到的代码顾问**
 
-代码审查 · 宏观审稿 · 安全审计 · 技术辩论 · 实验结果分析
+代码审查 · 安全审计 · 技术辩论 · 实验结果分析
 
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![MCP](https://img.shields.io/badge/protocol-MCP-7c3aed)](https://modelcontextprotocol.io)
@@ -31,7 +31,7 @@
   - [升级与卸载](#4-升级与卸载)
   - [特殊网络环境(代理/wrapper)](#5-特殊网络环境代理wrapper)
 - [五个工具](#-五个工具)
-- [五种模式](#-五种模式)
+- [四种模式](#-四种模式)
 - [命名对话:持久续聊](#-命名对话持久续聊)
 - [实时进度与后台运行](#-实时进度与后台运行)
 - [环境变量](#-环境变量)
@@ -183,7 +183,7 @@ rm -rf ~/fable-advisor ~/.fable-advisor
 |---|---|---|
 | `prompt` | string,必填 | 咨询/审查/讨论内容(自包含,Fable 自己读代码) |
 | `directory` | string,必填 | 项目绝对路径(子进程 cwd,Fable 的可读范围) |
-| `mode` | 枚举,默认 `discuss` | 见[五种模式](#-五种模式) |
+| `mode` | 枚举,默认 `discuss` | 见[四种模式](#-四种模式) |
 | `conversation` | string,默认 `"default"` | 命名对话,同名续聊(底层 `--resume`) |
 | `fresh` | bool,默认 `false` | 丢弃该名字的历史,重新开始 |
 | `files` | string[],可选 | 重点文件/子目录(相对 directory) |
@@ -191,14 +191,13 @@ rm -rf ~/fable-advisor ~/.fable-advisor
 
 </details>
 
-## 🎭 五种模式
+## 🎭 四种模式
 
 | mode | 角色 | 适合 |
 |---|---|---|
 | `review` | 代码审查:实现正确性——bug、边界条件、逻辑错误;Critical/Important/Minor 严格定义(科研代码按"会不会改变论文结论"分级),不凑数、不报风格问题,带 finding 范例 | 改完一个 feature/修完一个 bug 之后 |
-| `project_review` | 宏观审稿:架构、模块划分、方法论、技术债;每个 weakness 标注 fatal/serious/cosmetic | 项目里程碑、开题/结题、重构前 |
 | `audit` | 对抗审计:安全/数据正确性/质量清单式排查,宽撒网但每条带 [Confirmed\|Likely\|Speculative] 分诊标签 | 上线前、处理敏感数据的代码 |
-| `discuss` | **默认模式**·辩论伙伴/第二意见:开头必须亮立场,不附和;帮你拿主意时给明确推荐 | 技术选型、"我该怎么做"、想找人抬杠 |
+| `discuss` | **默认模式**·辩论伙伴/第二意见/架构与设计讨论:开头必须亮立场,不附和;帮你拿主意时给明确推荐 | 技术选型、架构讨论、"我该怎么做"、想找人抬杠 |
 | `research` | **科研协作者(PI 视角)**:解读实验结果(机制解释,非复述)、排查实验 setting 的效度威胁、按信息增益排序下一步 | 实验结果出来后:"这说明什么?下一步怎么走?够不够投稿?" |
 
 公共纪律(所有模式):回复语言跟随提问;引用必须 `file:line`;论断必须基于真读过的代码,没验证的标 "unverified";说不出触发场景就不报(空 findings 合法,高危低置信例外);单条 finding 一段以内;findings 在前、综述在后;不夸大严重度;最终消息自包含、以结论收尾。

@@ -144,9 +144,8 @@ server.registerTool("consult_fable", {
     directory: z.string().describe("Absolute path of the project directory Fable may read."),
     mode: z.enum(MODE_NAMES).default(DEFAULT_MODE).describe(
       "review=pure code review, implementation correctness (Critical/Important/Minor findings with file:line); " +
-      "project_review=macro architecture/methodology critique; " +
       "audit=adversarial security/quality sweep; " +
-      "discuss=default — debate partner / second opinion / help deciding, takes positions; " +
+      "discuss=default — debate partner / second opinion / architecture & design discussion, takes positions; " +
       "research=interpret experimental results vs the author's goal, critique the experimental " +
       "setup, rank next steps by information gain. All modes can fan out read-only subagents " +
       "for large scopes (slower and pricier — prefer background=true for big jobs)"),
