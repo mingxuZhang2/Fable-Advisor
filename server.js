@@ -8,7 +8,7 @@
  * server 随时可以死掉重启,不影响在跑的任务。
  *
  * Required env (set via `claude mcp add -e ...`):
- *   FABLE_BASE_URL    e.g. https://anyrouter.top
+ *   FABLE_BASE_URL    e.g. https://your-relay.example.com
  *   FABLE_AUTH_TOKEN  the relay's sk-... token
  * Optional env(由 runner 消费):
  *   FABLE_MODEL / FABLE_CLAUDE_BIN / FABLE_HOME /

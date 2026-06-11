@@ -5,7 +5,7 @@
 
 ## 背景与目标
 
-v1(已部署 hpc2/3090)把第三方中转(anyrouter)的 Fable 模型封装成 MCP 工具
+v1(已部署 目标服务器)把第三方中转(anyrouter)的 Fable 模型封装成 MCP 工具
 `consult_fable`,内部 spawn headless Claude Code(`claude -p`),代码只读。
 v1 的局限:无状态(每次全新对话)、一次性 JSON 返回(无进度)、单一用途。
 

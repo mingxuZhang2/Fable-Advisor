@@ -16,7 +16,7 @@
 
 **Files:** Create: `.gitignore`
 
-**Step 1:** 在 `/Users/mingxu/Desktop/Project 2/mcp` 下:
+**Step 1:** 在 `<repo-root>` 下:
 
 ```bash
 git init
@@ -890,14 +890,14 @@ FABLE_AUTH_TOKEN=<token> node -e '
 
 ---
 
-## Task 8: 打包部署到 hpc2 / 3090
+## Task 8: 打包部署到 目标服务器
 
 **Step 1:** `cd .. && COPYFILE_DISABLE=1 tar czf /tmp/fable-advisor-v2.tgz fable-advisor`
 **Step 2:** 两台各执行(用户已授权 scp;**不改注册、不改任何用户文件**,纯覆盖我们自己的目录):
 
 ```bash
-scp /tmp/fable-advisor-v2.tgz hpc2:/tmp/ && ssh hpc2 'tar xzf /tmp/fable-advisor-v2.tgz -C ~ && rm /tmp/fable-advisor-v2.tgz'
-scp /tmp/fable-advisor-v2.tgz 3090:/tmp/ && ssh 3090 'tar xzf /tmp/fable-advisor-v2.tgz -C ~ && rm /tmp/fable-advisor-v2.tgz'
+scp /tmp/fable-advisor-v2.tgz server-a:/tmp/ && ssh server-a 'tar xzf /tmp/fable-advisor-v2.tgz -C ~ && rm /tmp/fable-advisor-v2.tgz'
+scp /tmp/fable-advisor-v2.tgz server-b:/tmp/ && ssh server-b 'tar xzf /tmp/fable-advisor-v2.tgz -C ~ && rm /tmp/fable-advisor-v2.tgz'
 ```
 
 **Step 3:** 给用户的服务器端验证指引(用户自己跑):
@@ -906,7 +906,7 @@ scp /tmp/fable-advisor-v2.tgz 3090:/tmp/ && ssh 3090 'tar xzf /tmp/fable-advisor
 3. "background=true 让 Fable audit 一下这个项目" → 立即拿到 run_id 和 tail 命令 → 另开终端 tail -f 看直播 → 问主模型"Fable 到哪步了"(fable_status)→ 完成后 fable_result
 4. 状态行验证:阻塞模式调用时观察工具行是否滚动显示 `step N · Read xxx · 时长`
 
-**Step 4:** `git commit -am "chore: v2 deployed to hpc2 and 3090"`(如有零散改动)
+**Step 4:** `git commit -am "chore: v2 deployed to target servers"`(如有零散改动)
 
 ---
 
