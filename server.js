@@ -204,7 +204,8 @@ Use fable_status / fable_result, or fable_cancel to stop it.`);
 ---
 conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
       `turns total: ${turns} · ${fmtTokens(r.usage?.output_tokens)} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
-      `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${runId}`);
+      `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${runId}` +
+      (r.report_path ? `\nreport saved: ${r.report_path}` : ""));
   }
 });
 
@@ -234,7 +235,8 @@ server.registerTool("fable_result", {
 ---
 conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
     `turns total: ${turns} · ${fmtTokens(r.usage?.output_tokens)} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
-    `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${id}`);
+    `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${id}` +
+    (r.report_path ? `\nreport saved: ${r.report_path}` : ""));
 });
 
 server.registerTool("fable_conversations", {

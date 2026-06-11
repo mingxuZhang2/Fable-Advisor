@@ -73,6 +73,13 @@ test("happy path: done state, result.json, live transcript, conversations regist
   assert.match(transcript, /fresh analysis/);
   assert.match(transcript, /Review the trainer/); // header 含 prompt
 
+  // 报告落盘到被咨询目录的 fable-reports/
+  assert.equal(res.report_path, path.join(home, "fable-reports", `${runId}-default.md`));
+  const report = fs.readFileSync(res.report_path, "utf8");
+  assert.match(report, /FRESH-ANSWER/);
+  assert.match(report, /Review the trainer/);
+  assert.match(report, /mode: review/);
+
   const convs = readJson(path.join(home, "conversations.json"));
   assert.equal(convs[home].default.session_id, "fake-session-2");
   assert.equal(convs[home].default.turns, 1);

@@ -208,7 +208,26 @@ function fail(reason) {
   process.exit(1);
 }
 
+// 把最终报告落一份 Markdown 到被咨询的项目目录(fable-reports/),失败不影响 run 本身
+function saveReport(event, resumed) {
+  const safeConv = spec.conversation.replace(/[^\w.-]+/g, "_");
+  const reportDir = path.join(spec.directory, "fable-reports");
+  const reportPath = path.join(reportDir, `${spec.runId}-${safeConv}.md`);
+  const meta = [
+    `mode: ${spec.mode}`, `conversation: ${spec.conversation}${resumed ? " (resumed)" : ""}`,
+    `date: ${new Date().toISOString()}`, `run_id: ${spec.runId}`,
+    `tokens: ${event.usage?.output_tokens ?? "?"} out · cost: $${(event.total_cost_usd ?? 0).toFixed(3)}`,
+  ].map((l) => `- ${l}`).join("\n");
+  fs.mkdirSync(reportDir, { recursive: true });
+  fs.writeFileSync(reportPath,
+    `# Fable ${spec.mode} report\n\n${meta}\n\n## Prompt\n\n${spec.prompt}\n\n## Report\n\n${event.result ?? ""}\n`);
+  return reportPath;
+}
+
 function succeed(event, resumed) {
+  let reportPath = null;
+  try { reportPath = saveReport(event, resumed); }
+  catch (err) { live(`> [${hms()}] warning: failed to save report file: ${err?.message ?? err}\n`); }
   writeJson(path.join(dir, "result.json"), {
     text: event.result ?? "",
     session_id: event.session_id,
@@ -219,6 +238,7 @@ function succeed(event, resumed) {
     conversation: spec.conversation,
     mode: spec.mode,
     resumed,
+    report_path: reportPath,
   });
   try { // 注册表更新失败不应让整个 run 失败:result.json 已写完,结果是完整的
     const prev = getConversation(spec.directory, spec.conversation);
