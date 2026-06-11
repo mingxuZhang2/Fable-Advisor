@@ -113,11 +113,10 @@ process.on("SIGTERM", () => { // 取消路径(server kill(-runnerPid) 触发):�
 // 单次尝试:resolve {ok,event} | {stalled:true} | {reason}
 function runAttempt(resumeId) {
   return new Promise((resolve) => {
-    // research 模式放行 Agent/Task:Fable 可以派 subagent 并行阅读大 repo/多组结果
-    const extraTools = spec.mode === "research" ? ["Agent", "Task"] : [];
     const args = [
       "-p", promptText, "--model", MODEL, "--setting-sources", "",
-      "--allowedTools", "Read", "Grep", "Glob", "WebFetch", "WebSearch", ...extraTools,
+      // Agent/Task:可派只读 subagent 并行探索大 repo(写类工具仍被 disallow 挡住)
+      "--allowedTools", "Read", "Grep", "Glob", "WebFetch", "WebSearch", "Agent", "Task",
       "--disallowedTools", "Bash", "Edit", "Write", "NotebookEdit",
       "--append-system-prompt", systemPromptFor(spec.mode),
       "--output-format", "stream-json", "--verbose",

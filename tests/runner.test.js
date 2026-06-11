@@ -126,9 +126,9 @@ test("stall watchdog: hung child killed, state failed with stall reason, exit no
 });
 
 test("watchdog resets on each event: slow stream (gaps < total < stall window) still completes", async () => {
-  // 事件间隔 150ms,stall 窗口 ≈300ms,总时长 ≈600ms:
+  // 事件间隔 120ms,stall 窗口 ≈420ms,总时长 ≈840ms:
   // 若 watchdog 是硬超时会失败;只有"每个事件都重置计时器"才能跑完
-  const { home, env } = setup({ FAKE_MODE: "slow", FABLE_STALL_MINUTES: "0.005" });
+  const { home, env } = setup({ FAKE_MODE: "slow", FABLE_STALL_MINUTES: "0.007" });
   const runId = "202606101204-review-eeee";
   const specPath = writeSpec(home, {
     runId, prompt: "Slow but alive", directory: home, mode: "review", conversation: "default",

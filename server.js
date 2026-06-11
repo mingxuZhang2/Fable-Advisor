@@ -146,8 +146,8 @@ server.registerTool("consult_fable", {
       "audit=adversarial security/quality sweep; " +
       "discuss=default — debate partner / second opinion / help deciding, takes positions; " +
       "research=interpret experimental results vs the author's goal, critique the experimental " +
-      "setup, rank next steps by information gain (can spawn subagents to read large repos in " +
-      "parallel — slower and pricier, for substantive research questions)"),
+      "setup, rank next steps by information gain. All modes can fan out read-only subagents " +
+      "for large scopes (slower and pricier — prefer background=true for big jobs)"),
     conversation: z.string().default("default").describe(
       "Named thread. Same name = Fable continues with memory of prior turns."),
     fresh: z.boolean().default(false).describe("Discard this conversation's history and start anew."),
