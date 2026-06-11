@@ -62,7 +62,11 @@ function readState(runId) {
 
 const resolveRunId = (runId) => runId || store.latestRunId();
 
-const elapsedSec = (st) => Math.round((Date.now() - Date.parse(st.started)) / 1000);
+// 在跑:距开始的耗时;终态:总耗时(用 updated 封顶,避免昨天的 run 显示越长越大)
+const elapsedSec = (st) => {
+  const end = st.status === "running" ? Date.now() : Date.parse(st.updated);
+  return Math.round((end - Date.parse(st.started)) / 1000);
+};
 
 function statusText(runId) {
   const st = readState(runId);
@@ -109,6 +113,14 @@ function launchRun(args) {
   // detached + 自成进程组:server/主会话死了它照跑;cancel 用 kill(-pid) 收割全组
   const child = spawn(process.execPath, [RUNNER, specPath],
     { detached: true, stdio: "ignore", env: process.env });
+  // 异步 spawn 失败(EAGAIN/ENOMEM)会 emit error;没监听会带崩整个 server
+  child.on("error", (err) => {
+    store.writeJson(statePath(runId), {
+      status: "failed", pid: 0, turn: 0, action: `failed to spawn runner: ${err.message}`,
+      started: now, updated: new Date().toISOString(),
+      runId, conversation: args.conversation, directory: args.directory, mode: args.mode,
+    });
+  });
   child.unref();
   return { runId, resumed: Boolean(spec.resumeSessionId) };
 }

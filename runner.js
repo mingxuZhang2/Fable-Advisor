@@ -206,7 +206,7 @@ function succeed(event, resumed) {
     setConversation(spec.directory, spec.conversation, {
       session_id: event.session_id,
       mode: spec.mode,
-      turns: (prev?.turns ?? 0) + 1,
+      turns: spec.fresh ? 1 : (prev?.turns ?? 0) + 1, // fresh 重开:轮数从 1 重计
       last_used: new Date().toISOString(),
       summary: spec.prompt.slice(0, 120),
     });
