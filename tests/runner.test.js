@@ -32,6 +32,18 @@ const runFiles = (home, runId) => {
     live: () => fs.readFileSync(path.join(dir, "live.md"), "utf8"),
   };
 };
+// 轮询直到 fn() 返回真值(文件未就绪抛错按"未就绪"处理),代替易 flake 的固定 sleep
+async function waitFor(fn, timeoutMs = 5000, intervalMs = 25) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      const v = fn();
+      if (v) return v;
+    } catch {}
+    if (Date.now() > deadline) throw new Error("waitFor: condition not met in time");
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
 
 test("happy path: done state, result.json, live transcript, conversations registry", async () => {
   const { home, env } = setup();
@@ -152,7 +164,8 @@ test("cancellation: SIGTERM → cancelled state, ## CANCELLED marker, exit 0", a
     runId, prompt: "Audit everything", directory: home, mode: "audit", conversation: "default",
   });
   const child = spawn(process.execPath, [RUNNER, specPath], { env, stdio: "ignore" });
-  await new Promise((r) => setTimeout(r, 200)); // 等 runner 启动并 spawn 子进程
+  // 轮询而非固定 sleep:高负载下 runner 启动可能远超 200ms
+  await waitFor(() => { runFiles(home, runId).state; return true; });
   child.kill("SIGTERM");
   const code = await new Promise((resolve) => child.on("close", resolve));
   assert.equal(code, 0);
@@ -172,11 +185,9 @@ test("heartbeat: state.updated keeps refreshing while upstream is silent", async
   });
   const child = spawn(process.execPath, [RUNNER, specPath], { env, stdio: "ignore" });
   try {
-    await new Promise((r) => setTimeout(r, 250)); // 等 runner 起来并写入初始 state
-    const first = runFiles(home, runId).state.updated;
-    await new Promise((r) => setTimeout(r, 150)); // 静默期:fake 在 hang,只有心跳在动
-    const second = runFiles(home, runId).state.updated;
-    assert.notEqual(second, first, "heartbeat should refresh state.updated during silence");
+    const first = await waitFor(() => runFiles(home, runId).state.updated);
+    // 静默期:fake 在 hang,只有心跳在动——等到 updated 变化为止
+    await waitFor(() => runFiles(home, runId).state.updated !== first);
   } finally {
     child.kill("SIGTERM");
     await new Promise((resolve) => child.on("close", resolve));
