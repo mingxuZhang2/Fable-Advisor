@@ -6,8 +6,11 @@
   "bin": {
     "fable-advisor": "./server.js"
   },
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
