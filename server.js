@@ -23,7 +23,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import * as store from "./lib/store.js";
-import { MODE_NAMES } from "./lib/modes.js";
+import { MODE_NAMES, DEFAULT_MODE } from "./lib/modes.js";
 
 if (!process.env.FABLE_BASE_URL || !process.env.FABLE_AUTH_TOKEN) {
   console.error("fable-advisor: FABLE_BASE_URL and FABLE_AUTH_TOKEN must be set");
@@ -140,11 +140,11 @@ server.registerTool("consult_fable", {
     prompt: z.string().describe(
       "What to review/audit/discuss/ask. Self-contained; include context Fable can't read from disk."),
     directory: z.string().describe("Absolute path of the project directory Fable may read."),
-    mode: z.enum(MODE_NAMES).default("advise").describe(
-      "review=implementation correctness (bugs, file:line findings); " +
+    mode: z.enum(MODE_NAMES).default(DEFAULT_MODE).describe(
+      "review=pure code review, implementation correctness (Critical/Important/Minor findings with file:line); " +
       "project_review=macro architecture/methodology critique; " +
-      "audit=adversarial security/quality sweep; discuss=debate partner with positions; " +
-      "advise=options + one clear recommendation; " +
+      "audit=adversarial security/quality sweep; " +
+      "discuss=default — debate partner / second opinion / help deciding, takes positions; " +
       "research=interpret experimental results vs the author's goal, critique the experimental " +
       "setup, rank next steps by information gain (can spawn subagents to read large repos in " +
       "parallel — slower and pricier, for substantive research questions)"),

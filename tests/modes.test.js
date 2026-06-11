@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { systemPromptFor, MODE_NAMES } from "../lib/modes.js";
+import { systemPromptFor, MODE_NAMES, DEFAULT_MODE } from "../lib/modes.js";
 
-test("six modes exist", () => {
+test("five modes exist", () => {
   assert.deepEqual([...MODE_NAMES].sort(),
-    ["advise", "audit", "discuss", "project_review", "research", "review"]);
+    ["audit", "discuss", "project_review", "research", "review"]);
 });
 
 test("each mode prompt is distinct and carries common rules", () => {
@@ -16,6 +16,6 @@ test("each mode prompt is distinct and carries common rules", () => {
   }
 });
 
-test("unknown mode falls back to advise", () => {
-  assert.equal(systemPromptFor("nope"), systemPromptFor("advise"));
+test("unknown mode falls back to the default mode", () => {
+  assert.equal(systemPromptFor("nope"), systemPromptFor(DEFAULT_MODE));
 });

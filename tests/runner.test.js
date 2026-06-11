@@ -85,9 +85,9 @@ test("429 twice: retries then succeeds, live.md mentions retry", async () => {
   const { home, env } = setup({
     FAKE_MODE: "429twice", FAKE_STATE: path.join(os.tmpdir(), `fable-429-${Date.now()}-${Math.random()}`),
   });
-  const runId = "202606101202-advise-cccc";
+  const runId = "202606101202-discuss-cccc";
   const specPath = writeSpec(home, {
-    runId, prompt: "Pick a queue library", directory: home, mode: "advise", conversation: "default",
+    runId, prompt: "Pick a queue library", directory: home, mode: "discuss", conversation: "default",
   });
   await run(process.execPath, [RUNNER, specPath], { env });
 
