@@ -161,3 +161,24 @@ test("cancellation: SIGTERM → cancelled state, ## CANCELLED marker, exit 0", a
   assert.equal(state.status, "cancelled");
   assert.match(live(), /## CANCELLED/);
 });
+
+test("heartbeat: state.updated keeps refreshing while upstream is silent", async () => {
+  const { home, env } = setup({
+    FAKE_MODE: "hang", FABLE_STALL_MINUTES: "1", FABLE_HEARTBEAT_MS: "40",
+  });
+  const runId = "202606101207-review-hhhh";
+  const specPath = writeSpec(home, {
+    runId, prompt: "Slow upstream", directory: home, mode: "review", conversation: "default",
+  });
+  const child = spawn(process.execPath, [RUNNER, specPath], { env, stdio: "ignore" });
+  try {
+    await new Promise((r) => setTimeout(r, 250)); // 等 runner 起来并写入初始 state
+    const first = runFiles(home, runId).state.updated;
+    await new Promise((r) => setTimeout(r, 150)); // 静默期:fake 在 hang,只有心跳在动
+    const second = runFiles(home, runId).state.updated;
+    assert.notEqual(second, first, "heartbeat should refresh state.updated during silence");
+  } finally {
+    child.kill("SIGTERM");
+    await new Promise((resolve) => child.on("close", resolve));
+  }
+});

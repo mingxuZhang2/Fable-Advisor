@@ -20,6 +20,9 @@ const MODEL = process.env.FABLE_MODEL || "claude-fable-5[1m]";
 const CLAUDE_BIN = process.env.FABLE_CLAUDE_BIN || "claude";
 const STALL_MIN = Number(process.env.FABLE_STALL_MINUTES) || 10; // 0/NaN/空串 → 默认 10
 const STALL_MS = STALL_MIN * 60_000;
+// 心跳:上游静默(如 429 内部重试)期间也定期刷新 state.updated,
+// 让 server 的 progress 通知持续流出——否则 MCP 客户端会按超时掐断阻塞调用
+const HEARTBEAT_MS = Number(process.env.FABLE_HEARTBEAT_MS) || 10_000;
 const RETRY_DELAYS = (process.env.FABLE_RETRY_DELAYS_MS || "5000,15000,30000")
   .split(",").map(Number).filter((n) => Number.isFinite(n) && n > 0);
 const RETRYABLE = /429|rate.?limit|overloaded|service unavailable|529|ECONNRESET|ETIMEDOUT/i;
@@ -132,10 +135,12 @@ function runAttempt(resumeId) {
     let stalled = false;
     let watchdog = null;
     let settled = false;
+    const heartbeat = setInterval(() => setState({}), HEARTBEAT_MS); // 空 patch 只刷新 updated
     const settle = (r) => { // 幂等:watchdog 先 resolve 后,close/exit 再触发也无害
       if (settled) return;
       settled = true;
       clearTimeout(watchdog);
+      clearInterval(heartbeat);
       resolve(r);
     };
     const resetWatchdog = () => {
