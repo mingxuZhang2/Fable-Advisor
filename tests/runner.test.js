@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs";
 import os from "node:os";
@@ -111,4 +111,53 @@ test("stall watchdog: hung child killed, state failed with stall reason, exit no
   const { state } = runFiles(home, runId);
   assert.equal(state.status, "failed");
   assert.match(state.action, /stall/i);
+});
+
+test("watchdog resets on each event: slow stream (gaps < total < stall window) still completes", async () => {
+  // 事件间隔 150ms,stall 窗口 ≈300ms,总时长 ≈600ms:
+  // 若 watchdog 是硬超时会失败;只有"每个事件都重置计时器"才能跑完
+  const { home, env } = setup({ FAKE_MODE: "slow", FABLE_STALL_MINUTES: "0.005" });
+  const runId = "202606101204-review-eeee";
+  const specPath = writeSpec(home, {
+    runId, prompt: "Slow but alive", directory: home, mode: "review", conversation: "default",
+  });
+  await run(process.execPath, [RUNNER, specPath], { env });
+
+  const { state, result } = runFiles(home, runId);
+  assert.equal(state.status, "done");
+  assert.equal(result().text, "FRESH-ANSWER");
+});
+
+test("session gone upstream: downgrades to fresh conversation and succeeds", async () => {
+  const { home, env } = setup({ FAKE_MODE: "session-gone" });
+  const runId = "202606101205-discuss-ffff";
+  const specPath = writeSpec(home, {
+    runId, prompt: "Continue please", directory: home, mode: "discuss",
+    conversation: "arch", resumeSessionId: "fake-session-2",
+  });
+  await run(process.execPath, [RUNNER, specPath], { env });
+
+  const { state, result, live } = runFiles(home, runId);
+  assert.equal(state.status, "done");
+  const res = result();
+  assert.equal(res.text, "FRESH-ANSWER");
+  assert.equal(res.resumed, false);
+  assert.match(live(), /session expired upstream/);
+});
+
+test("cancellation: SIGTERM → cancelled state, ## CANCELLED marker, exit 0", async () => {
+  const { home, env } = setup({ FAKE_MODE: "hang", FABLE_STALL_MINUTES: "1" }); // stall 窗口足够大,不会先触发
+  const runId = "202606101206-audit-gggg";
+  const specPath = writeSpec(home, {
+    runId, prompt: "Audit everything", directory: home, mode: "audit", conversation: "default",
+  });
+  const child = spawn(process.execPath, [RUNNER, specPath], { env, stdio: "ignore" });
+  await new Promise((r) => setTimeout(r, 200)); // 等 runner 启动并 spawn 子进程
+  child.kill("SIGTERM");
+  const code = await new Promise((resolve) => child.on("close", resolve));
+  assert.equal(code, 0);
+
+  const { state, live } = runFiles(home, runId);
+  assert.equal(state.status, "cancelled");
+  assert.match(live(), /## CANCELLED/);
 });
