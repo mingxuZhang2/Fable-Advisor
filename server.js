@@ -16,6 +16,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -84,7 +85,7 @@ function newRunId(mode) {
   // 12 位放不下 "YYYYMMDDHHmm" 之外再加秒,故用 2 位年:YYMMDDHHmmss(UTC)。
   // 秒级粒度;同一秒内多个 run 退化为按 mode/随机段排序(latestRunId 只是缺省兜底,可接受)。
   const ts = new Date().toISOString().slice(2, 19).replace(/[-:T]/g, "");
-  return `${ts}-${mode}-${Math.random().toString(36).slice(2, 6)}`;
+  return `${ts}-${mode}-${randomBytes(2).toString("hex")}`;
 }
 
 function launchRun(args) {
@@ -159,6 +160,12 @@ Poll with fable_status, fetch the answer with fable_result.`);
   let progress = 0;
   for (;;) {
     await sleep(POLL_MS);
+    // 客户端中断(Esc):run 照常在后台跑,但别再傻等
+    if (extra.signal?.aborted) {
+      return ok(`Wait aborted; the run continues in the background.
+run_id: ${runId}
+Use fable_status / fable_result, or fable_cancel to stop it.`);
+    }
     const st = readState(runId);
     if (!st) return fail(`Run ${runId}: state.json vanished — see ${store.runDir(runId)}`);
     if (st.updated !== lastUpdated && progressToken !== undefined) {
@@ -175,7 +182,7 @@ Poll with fable_status, fetch the answer with fable_result.`);
     }
     const r = store.readJson(path.join(store.runDir(runId), "result.json"), {});
     const turns = store.getConversation(args.directory, args.conversation)?.turns ?? "?";
-    return ok(`${r.text}
+    return ok(`${r.text ?? "(result.json unreadable)"}
 
 ---
 conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
@@ -203,11 +210,14 @@ server.registerTool("fable_result", {
   if (!id) return ok("No runs yet.");
   const r = store.readJson(path.join(store.runDir(id), "result.json"));
   if (!r) return ok(`Not finished.\n\n${statusText(id)}`);
-  return ok(`${r.text}
+  const st = store.readJson(statePath(id));
+  const turns = st ? store.getConversation(st.directory, st.conversation)?.turns ?? "?" : "?";
+  return ok(`${r.text ?? "(result.json unreadable)"}
 
 ---
 conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
-    `$${(r.cost_usd ?? 0).toFixed(3)} · ${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${id}`);
+    `turns total: ${turns} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
+    `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${id}`);
 });
 
 server.registerTool("fable_conversations", {

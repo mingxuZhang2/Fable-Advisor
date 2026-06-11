@@ -22,6 +22,7 @@ function startServer(extraEnv = {}) {
   });
   let id = 0;
   const pending = new Map();
+  const notifications = [];
   let buf = "";
   proc.stdout.on("data", (d) => {
     buf += d;
@@ -31,6 +32,7 @@ function startServer(extraEnv = {}) {
       buf = buf.slice(nl + 1);
       let msg;
       try { msg = JSON.parse(line); } catch { continue; }
+      if (msg.method === "notifications/progress") notifications.push(msg.params);
       if (msg.id && pending.has(msg.id)) {
         pending.get(msg.id)(msg);
         pending.delete(msg.id);
@@ -43,9 +45,11 @@ function startServer(extraEnv = {}) {
     proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: msgId, method, params }) + "\n");
   });
   return {
-    proc, home, send,
-    call: async (name, args) => {
-      const r = await send("tools/call", { name, arguments: args });
+    proc, home, send, notifications,
+    call: async (name, args, meta) => {
+      const params = { name, arguments: args };
+      if (meta) params._meta = meta;
+      const r = await send("tools/call", params);
       return { isError: r.result?.isError ?? false, text: r.result?.content?.[0]?.text ?? "" };
     },
     init: async () => {
@@ -145,6 +149,25 @@ test("cancel kills a hung background run", async (t) => {
     cancelled = /status: cancelled/.test(st.text);
   }
   assert.ok(cancelled, "run should reach cancelled state");
+});
+
+test("blocking consult streams progress notifications when client passes a progressToken", async (t) => {
+  const s = startServer();
+  t.after(() => s.proc.kill());
+  await s.init();
+
+  const r = await s.call("consult_fable",
+    { prompt: "review", directory: s.home }, { progressToken: "tok-1" });
+  assert.equal(r.isError, false);
+  assert.ok(s.notifications.length >= 1, "should have received progress notifications");
+  for (const n of s.notifications) {
+    assert.equal(n.progressToken, "tok-1");
+    assert.match(n.message, /step \d+ · .+ · \d+s/);
+  }
+  // 不带 token 的调用不应产生新通知
+  const before = s.notifications.length;
+  await s.call("consult_fable", { prompt: "again", directory: s.home, fresh: true });
+  assert.equal(s.notifications.length, before);
 });
 
 test("consult rejects a non-existent or relative directory", async (t) => {
