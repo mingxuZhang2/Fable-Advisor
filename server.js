@@ -33,6 +33,7 @@ if (!process.env.FABLE_BASE_URL || !process.env.FABLE_AUTH_TOKEN) {
 const RUNNER = path.join(import.meta.dirname, "runner.js");
 const POLL_MS = 500;
 const ORPHAN_MS = 60_000;
+const BLOCKING_MAX_MS = Number(process.env.FABLE_BLOCKING_MAX_MS) || 1_770_000; // 默认 29.5min,留 30s 余量给 MCP 客户端 30min 超时
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ok = (text) => ({ content: [{ type: "text", text }] });
@@ -69,6 +70,21 @@ const elapsedSec = (st) => {
 };
 
 const fmtTokens = (n = 0) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k tok` : `${n} tok`);
+
+function fmtResult(r, runId, turns) {
+  const stats = [
+    `mode: ${r.mode}`,
+    `conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"})`,
+    `turns: ${turns}`,
+    `output: ${fmtTokens(r.usage?.output_tokens)}`,
+    `cost: $${(r.cost_usd ?? 0).toFixed(3)}`,
+    `time: ${Math.round((r.duration_ms ?? 0) / 1000)}s`,
+    `run_id: ${runId}`,
+  ].join(" | ");
+  const header = `[${stats}]`;
+  const report = r.report_path ? `\nreport: ${r.report_path}` : "";
+  return `${header}${report}\n\n${r.text ?? "(result.json unreadable)"}`;
+}
 
 function statusText(runId) {
   const st = readState(runId);
@@ -171,12 +187,13 @@ Poll with fable_status, fetch the answer with fable_result.`);
   }
 
   // 阻塞模式:轮询状态文件,状态变化转成 progress notification(客户端给了 token 才发)
+  // 超过 BLOCKING_MAX_MS 自动降级为后台模式,避免 MCP 客户端超时
   const progressToken = extra._meta?.progressToken;
+  const pollStart = Date.now();
   let lastUpdated = "";
   let progress = 0;
   for (;;) {
     await sleep(POLL_MS);
-    // 客户端中断(Esc):run 照常在后台跑,但别再傻等
     if (extra.signal?.aborted) {
       return ok(`Wait aborted; the run continues in the background.
 run_id: ${runId}
@@ -192,19 +209,22 @@ Use fable_status / fable_result, or fable_cancel to stop it.`);
           message: `step ${st.turn} · ${st.action} · ${fmtTokens(st.tokens)} · ${elapsedSec(st)}s` },
       }).catch(() => {});
     }
-    if (st.status === "running") continue;
+    if (st.status === "running") {
+      if (Date.now() - pollStart > BLOCKING_MAX_MS) {
+        return ok(`Still running (${elapsedSec(st)}s, step ${st.turn}, ${fmtTokens(st.tokens)}) — auto-switched to background to avoid timeout.
+run_id: ${runId}
+current: ${st.action}
+Poll with fable_status, fetch the answer with fable_result when done.
+Watch live: tail -f ${livePath(runId)}`);
+      }
+      continue;
+    }
     if (st.status !== "done") {
       return fail(`Run ${st.status}: ${st.action}\nPartial transcript: ${livePath(runId)}`);
     }
     const r = store.readJson(path.join(store.runDir(runId), "result.json"), {});
     const turns = store.getConversation(args.directory, args.conversation)?.turns ?? "?";
-    return ok(`${r.text ?? "(result.json unreadable)"}
-
----
-conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
-      `turns total: ${turns} · ${fmtTokens(r.usage?.output_tokens)} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
-      `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${runId}` +
-      (r.report_path ? `\nreport saved: ${r.report_path}` : ""));
+    return ok(fmtResult(r, runId, turns));
   }
 });
 
@@ -229,13 +249,7 @@ server.registerTool("fable_result", {
   if (!r) return ok(`Not finished.\n\n${statusText(id)}`);
   const st = store.readJson(statePath(id));
   const turns = st ? store.getConversation(st.directory, st.conversation)?.turns ?? "?" : "?";
-  return ok(`${r.text ?? "(result.json unreadable)"}
-
----
-conversation: ${r.conversation} (${r.resumed ? "resumed" : "new"}) · mode: ${r.mode} · ` +
-    `turns total: ${turns} · ${fmtTokens(r.usage?.output_tokens)} · $${(r.cost_usd ?? 0).toFixed(3)} · ` +
-    `${Math.round((r.duration_ms ?? 0) / 1000)}s · run_id: ${id}` +
-    (r.report_path ? `\nreport saved: ${r.report_path}` : ""));
+  return ok(fmtResult(r, id, turns));
 });
 
 server.registerTool("fable_conversations", {

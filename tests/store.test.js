@@ -49,6 +49,27 @@ test("lock contention smoke: sequential writes to same directory both persist", 
   assert.equal(fs.existsSync(store.conversationsPath() + ".lock"), false);
 });
 
+test("updateConversation: atomic read-modify-write inside lock", () => {
+  resetConversations();
+  store.setConversation("/proj", "conv", { session_id: "s1", turns: 3 });
+  store.updateConversation("/proj", "conv", (prev) => ({
+    ...prev, session_id: "s2", turns: (prev?.turns ?? 0) + 1,
+  }));
+  const c = store.getConversation("/proj", "conv");
+  assert.equal(c.session_id, "s2");
+  assert.equal(c.turns, 4);
+});
+
+test("updateConversation: creates entry when none exists", () => {
+  resetConversations();
+  store.updateConversation("/new", "first", (prev) => ({
+    session_id: "s1", turns: prev === null ? 1 : prev.turns + 1,
+  }));
+  const c = store.getConversation("/new", "first");
+  assert.equal(c.session_id, "s1");
+  assert.equal(c.turns, 1);
+});
+
 test("runs listing sorts by id, latest wins, ignores non-run entries", () => {
   fs.mkdirSync(store.runDir("202606101200-review-aaaa"), { recursive: true });
   fs.mkdirSync(store.runDir("202606101300-audit-bbbb"), { recursive: true });
