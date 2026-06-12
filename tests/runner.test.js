@@ -15,7 +15,8 @@ function setup(extraEnv = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "fable-run-"));
   return { home, env: { ...process.env, FABLE_HOME: home, FABLE_CLAUDE_BIN: FAKE,
     FABLE_BASE_URL: "https://x", FABLE_AUTH_TOKEN: "sk-x",
-    FABLE_RETRY_DELAYS_MS: "20,20,20", FABLE_STALL_MINUTES: "1", ...extraEnv } };
+    FABLE_RETRY_DELAYS_MS: "20,20,20", FABLE_STALL_MINUTES: "1",
+    FABLE_FORWARD_ENV: "FAKE_MODE,FAKE_STATE", ...extraEnv } };
 }
 
 function writeSpec(home, spec) {
@@ -73,8 +74,8 @@ test("happy path: done state, result.json, live transcript, conversations regist
   assert.match(transcript, /fresh analysis/);
   assert.match(transcript, /Review the trainer/); // header 含 prompt
 
-  // 报告落盘到被咨询目录的 fable-reports/
-  assert.equal(res.report_path, path.join(home, "fable-reports", `${runId}-default.md`));
+  // 报告落盘到 FABLE_HOME/reports/（不写入被咨询的项目目录）
+  assert.equal(res.report_path, path.join(home, "reports", `${runId}-default.md`));
   const report = fs.readFileSync(res.report_path, "utf8");
   assert.match(report, /FRESH-ANSWER/);
   assert.match(report, /Review the trainer/);

@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
-import { runDir, readJson, writeJson, getConversation, setConversation } from "./lib/store.js";
+import { runDir, baseDir, readJson, writeJson, updateConversation } from "./lib/store.js";
 import { systemPromptFor } from "./lib/modes.js";
 import { describeEvent, outputTokens } from "./lib/events.js";
 
@@ -98,14 +98,23 @@ const promptText = spec.files?.length
   ? `${spec.prompt}\n\nFocus on these files first:\n${spec.files.map((f) => `- ${f}`).join("\n")}`
   : spec.prompt;
 
-const childEnv = {
-  ...process.env,
-  ANTHROPIC_BASE_URL: process.env.FABLE_BASE_URL,
-  ANTHROPIC_AUTH_TOKEN: process.env.FABLE_AUTH_TOKEN,
-  ANTHROPIC_MODEL: MODEL,
-  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-};
-delete childEnv.ANTHROPIC_API_KEY; // 与 AUTH_TOKEN 同时存在会被 API 拒绝
+const ENV_ALLOWLIST = [
+  "PATH", "HOME", "USER", "SHELL", "TERM", "LANG", "LC_ALL", "LC_CTYPE",
+  "TMPDIR", "TEMP", "TMP", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME",
+  "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+  "http_proxy", "https_proxy", "all_proxy", "no_proxy",
+  "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE",
+];
+const childEnv = Object.fromEntries(
+  ENV_ALLOWLIST.filter((k) => k in process.env).map((k) => [k, process.env[k]])
+);
+childEnv.ANTHROPIC_BASE_URL = process.env.FABLE_BASE_URL;
+childEnv.ANTHROPIC_AUTH_TOKEN = process.env.FABLE_AUTH_TOKEN;
+childEnv.ANTHROPIC_MODEL = MODEL;
+childEnv.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+for (const k of (process.env.FABLE_FORWARD_ENV || "").split(",").filter(Boolean)) {
+  if (k in process.env) childEnv[k] = process.env[k];
+}
 
 let child = null;
 
@@ -210,10 +219,9 @@ function fail(reason) {
   process.exit(1);
 }
 
-// 把最终报告落一份 Markdown 到被咨询的项目目录(fable-reports/),失败不影响 run 本身
 function saveReport(event, resumed) {
   const safeConv = spec.conversation.replace(/[^\w.-]+/g, "_");
-  const reportDir = path.join(spec.directory, "fable-reports");
+  const reportDir = path.join(baseDir(), "reports");
   const reportPath = path.join(reportDir, `${spec.runId}-${safeConv}.md`);
   const meta = [
     `mode: ${spec.mode}`, `conversation: ${spec.conversation}${resumed ? " (resumed)" : ""}`,
@@ -243,14 +251,14 @@ function succeed(event, resumed) {
     report_path: reportPath,
   });
   try { // 注册表更新失败不应让整个 run 失败:result.json 已写完,结果是完整的
-    const prev = getConversation(spec.directory, spec.conversation);
-    setConversation(spec.directory, spec.conversation, {
+    updateConversation(spec.directory, spec.conversation, (prev) => ({
+      ...(prev ?? {}),
       session_id: event.session_id,
       mode: spec.mode,
-      turns: spec.fresh ? 1 : (prev?.turns ?? 0) + 1, // fresh 重开:轮数从 1 重计
+      turns: spec.fresh ? 1 : (prev?.turns ?? 0) + 1,
       last_used: new Date().toISOString(),
       summary: spec.prompt.slice(0, 120),
-    });
+    }));
   } catch (err) {
     live(`> [${hms()}] warning: failed to update conversations registry: ${err?.message ?? err}\n`);
   }

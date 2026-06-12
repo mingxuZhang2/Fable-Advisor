@@ -17,7 +17,8 @@ function startServer(extraEnv = {}) {
   const proc = spawn(process.execPath, [SERVER], {
     env: { ...process.env, FABLE_HOME: home, FABLE_CLAUDE_BIN: FAKE,
       FABLE_BASE_URL: "https://x", FABLE_AUTH_TOKEN: "sk-x",
-      FABLE_RETRY_DELAYS_MS: "20,20,20", ...extraEnv },
+      FABLE_RETRY_DELAYS_MS: "20,20,20",
+      FABLE_FORWARD_ENV: "FAKE_MODE,FAKE_STATE", ...extraEnv },
     stdio: ["pipe", "pipe", "inherit"],
   });
   let id = 0;
